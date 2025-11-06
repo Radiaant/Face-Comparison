@@ -1,5 +1,5 @@
 
 {
-  "name": "Gemini Face Compare",
+  "name": "Radiaant Face Compare",
   "description": "An AI-powered web application that uses Google's Gemini API to compare two images and determine if they feature the same person. Upload two photos and get a similarity score and analysis."
 }
