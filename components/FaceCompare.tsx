@@ -58,17 +58,9 @@ const ImageUploadBox: React.FC<{
         />
       </label>
 
-      {/* Dropdown below each image */}
-      <select
-        value={selectedType}
-        onChange={onTypeChange}
-        className="mt-3 bg-gray-800 border border-gray-600 text-gray-300 text-sm rounded-md p-2 w-3/4 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
-      >
-        <option value="">Select Photo Type</option>
-        <option value="RTP (Real Time Photo)">RTP (Real Time Photo)</option>
-        <option value="KYC">KYC</option>
-        <option value="Portal Photo">Portal Photo</option>
-      </select>
+      <div className="mt-3 text-center text-sm text-gray-400 font-medium">
+        {selectedType}
+      </div>
     </div>
   );
 };
@@ -118,46 +110,120 @@ const ResultDisplay: React.FC<{ result: ComparisonResult & { type1?: string; typ
   );
 };
 
+type ComparisonType = 'RTP (Real Time Video)' | 'KYC' | 'Portal(IC)';
+
+type ComparisonPair = {
+  id: string;
+  type1: ComparisonType;
+  type2: ComparisonType;
+  image1: File | null;
+  image2: File | null;
+  result: (ComparisonResult & { type1?: string; type2?: string }) | null;
+  loading: boolean;
+};
+
 const FaceCompare = () => {
-  const [image1, setImage1] = useState<File | null>(null);
-  const [image2, setImage2] = useState<File | null>(null);
-  const [type1, setType1] = useState('');
-  const [type2, setType2] = useState('');
-  const [result, setResult] = useState<(ComparisonResult & { type1?: string; type2?: string }) | null>(null);
+  const [comparisons, setComparisons] = useState<ComparisonPair[]>([
+    {
+      id: '1',
+      type1: 'RTP (Real Time Video)',
+      type2: 'Portal(IC)',
+      image1: null,
+      image2: null,
+      result: null,
+      loading: false
+    },
+    {
+      id: '2',
+      type1: 'KYC',
+      type2: 'KYC',
+      image1: null,
+      image2: null,
+      result: null,
+      loading: false
+    },
+    {
+      id: '3',
+      type1: 'KYC',
+      type2: 'RTP (Real Time Video)',
+      image1: null,
+      image2: null,
+      result: null,
+      loading: false
+    },
+    {
+      id: '4',
+      type1: 'KYC',
+      type2: 'Portal(IC)',
+      image1: null,
+      image2: null,
+      result: null,
+      loading: false
+    }
+  ]);
+  
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [showResults, setShowResults] = useState<boolean>(false);
 
-  const handleFileChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>, setImage: React.Dispatch<React.SetStateAction<File | null>>) => {
-      if (event.target.files && event.target.files[0]) {
-        setImage(event.target.files[0]);
-        setResult(null);
-        setError(null);
-      }
-    },
-    []
-  );
+  const handleFileChange = useCallback((
+    event: React.ChangeEvent<HTMLInputElement>,
+    comparisonId: string,
+    imageType: 'image1' | 'image2'
+  ) => {
+    if (event.target.files && event.target.files[0]) {
+      const file = event.target.files[0];
+      setComparisons(prev => 
+        prev.map(comp => 
+          comp.id === comparisonId 
+            ? { ...comp, [imageType]: file, result: null }
+            : comp
+        )
+      );
+      setError(null);
+    }
+  }, []);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!image1 || !image2) {
-      setError('Please select both images to compare.');
-      return;
-    }
-    if (!type1 || !type2) {
-      setError('Please select photo types for both images.');
+    
+    // Check if all comparisons have both images
+    const hasMissingImages = comparisons.some(comp => !comp.image1 || !comp.image2);
+    if (hasMissingImages) {
+      setError('Please select both images for all comparisons.');
       return;
     }
 
     setLoading(true);
-    setResult(null);
     setError(null);
+    setShowResults(true);
+
+    // Process all comparisons in parallel
+    const comparisonPromises = comparisons.map(async (comp) => {
+      if (!comp.image1 || !comp.image2) return comp;
+      
+      try {
+        const result = await compareFaces(comp.image1, comp.image2);
+        return {
+          ...comp,
+          result: { 
+            ...result, 
+            type1: comp.type1, 
+            type2: comp.type2 
+          },
+          loading: false
+        };
+      } catch (err) {
+        console.error(`Error comparing ${comp.type1} and ${comp.type2}:`, err);
+        return { ...comp, loading: false };
+      }
+    });
 
     try {
-      const apiResult = await compareFaces(image1, image2);
-      setResult({ ...apiResult, type1, type2 });
+      const updatedComparisons = await Promise.all(comparisonPromises);
+      setComparisons(updatedComparisons);
     } catch (err: any) {
-      setError(err.message || 'An unknown error occurred.');
+      setError(err.message || 'An error occurred during comparison.');
     } finally {
       setLoading(false);
     }
@@ -166,28 +232,38 @@ const FaceCompare = () => {
   return (
     <div className="bg-gray-800/50 p-4 sm:p-8 rounded-xl shadow-2xl border border-gray-700">
       <form onSubmit={handleSubmit}>
-        <div className="flex flex-col sm:flex-row -m-2">
-          <ImageUploadBox
-            id="file1"
-            image={image1}
-            onFileChange={(e) => handleFileChange(e, setImage1)}
-            title="Upload Image 1"
-            selectedType={type1}
-            onTypeChange={(e) => setType1(e.target.value)}
-          />
-          <ImageUploadBox
-            id="file2"
-            image={image2}
-            onFileChange={(e) => handleFileChange(e, setImage2)}
-            title="Upload Image 2"
-            selectedType={type2}
-            onTypeChange={(e) => setType2(e.target.value)}
-          />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {comparisons.map((comp) => (
+            <div key={comp.id} className="bg-gray-900/50 p-4 rounded-lg border border-gray-700">
+              <h3 className="text-lg font-semibold text-center mb-4 text-purple-400">
+                {comp.type1} vs {comp.type2}
+              </h3>
+              <div className="flex flex-col sm:flex-row -m-2">
+                <ImageUploadBox
+                  id={`${comp.id}-image1`}
+                  image={comp.image1}
+                  onFileChange={(e) => handleFileChange(e, comp.id, 'image1')}
+                  title={`Upload ${comp.type1}`}
+                  selectedType={comp.type1}
+                  onTypeChange={() => {}}
+                />
+                <ImageUploadBox
+                  id={`${comp.id}-image2`}
+                  image={comp.image2}
+                  onFileChange={(e) => handleFileChange(e, comp.id, 'image2')}
+                  title={`Upload ${comp.type2}`}
+                  selectedType={comp.type2}
+                  onTypeChange={() => {}}
+                />
+              </div>
+            </div>
+          ))}
         </div>
+
         <div className="mt-6">
           <button
             type="submit"
-            disabled={loading || !image1 || !image2}
+            disabled={loading || comparisons.some(comp => !comp.image1 || !comp.image2)}
             className="w-full text-white bg-purple-600 hover:bg-purple-700 focus:ring-4 focus:outline-none focus:ring-purple-800 font-medium rounded-lg text-lg px-5 py-3 text-center transition-all duration-300 ease-in-out disabled:bg-gray-600 disabled:cursor-not-allowed flex items-center justify-center"
           >
             {loading ? (
@@ -209,16 +285,13 @@ const FaceCompare = () => {
                   <path
                     className="opacity-75"
                     fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 
-                       0 5.373 0 12h4zm2 5.291A7.962 
-                       7.962 0 014 12H0c0 3.042 1.135 
-                       5.824 3 7.938l3-2.647z"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                   ></path>
                 </svg>
-                Comparing...
+                Comparing All Pairs...
               </>
             ) : (
-              'Compare Faces'
+              'Compare All Pairs'
             )}
           </button>
         </div>
@@ -229,7 +302,50 @@ const FaceCompare = () => {
           {error}
         </p>
       )}
-      {result && <ResultDisplay result={result} />}
+
+      {showResults && (
+        <div className="mt-8">
+          <h2 className="text-2xl font-bold mb-4 text-center text-white">Comparison Results</h2>
+          <div className="overflow-x-auto">
+            <table className="min-w-full bg-gray-900 rounded-lg overflow-hidden">
+              <thead className="bg-gray-800">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Comparison</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Result</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Similarity</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Confidence</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-700">
+                {comparisons.map((comp) => (
+                  <tr key={comp.id} className="hover:bg-gray-800/50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-300">
+                      {comp.type1} vs {comp.type2}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {comp.result ? (
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          comp.result.match ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}>
+                          {comp.result.match ? 'Match' : 'No Match'}
+                        </span>
+                      ) : (
+                        <span className="text-gray-500">-</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                      {comp.result ? `${comp.result.similarityPercentage.toFixed(2)}%` : '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                      {comp.result ? `${comp.result.confidence?.toFixed(2) || 'N/A'}%` : '-'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

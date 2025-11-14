@@ -57,7 +57,9 @@ export const compareFaces = async (image1: File, image2: File): Promise<Comparis
       config: {
         responseMimeType: "application/json",
         responseSchema: comparisonSchema,
-      }
+        // FIX: Set temperature to 0.0 for deterministic output.
+        temperature: 0.0, 
+      },
     });
     
     const resultText = response.text.trim();
