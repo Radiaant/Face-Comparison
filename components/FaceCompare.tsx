@@ -14,16 +14,29 @@ const ImageUploadBox: React.FC<{
 
   return (
     <div className="w-full sm:w-1/2 p-2 flex flex-col items-center">
+      {/* Dropdown below each image */}
+      <select
+        value={selectedType}
+        onChange={onTypeChange}
+        className="mt-3 bg-gray-800 border border-gray-600 text-gray-300 text-sm rounded-md p-2 w-3/4 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+      >
+        <option value="">Select Photo Type</option>
+        <option value="RTP (Real Time Photo)">RTP (Real Time Photo)</option>
+        <option value="KYC">KYC</option>
+        <option value="Portal Photo">Portal Photo</option>
+      </select>
       <label
         htmlFor={id}
-        className="flex flex-col items-center justify-center w-full h-64 bg-gray-800 border-2 border-dashed border-gray-600 rounded-lg cursor-pointer hover:bg-gray-700 transition-colors"
+        className="flex flex-col items-center justify-center mt-6 w-full h-64 bg-gray-800 border-2 border-dashed border-gray-600 rounded-lg cursor-pointer hover:bg-gray-700 transition-colors"
       >
         {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt="Preview"
-            className="h-full w-full object-cover rounded-lg"
-          />
+          <div className="w-full h-full flex items-center justify-center overflow-hidden rounded-lg">
+            <img
+              src={imageUrl}
+              alt="Preview"
+              className="max-h-full max-w-full object-contain"
+            />
+          </div>
         ) : (
           <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center">
             <svg
@@ -58,17 +71,6 @@ const ImageUploadBox: React.FC<{
         />
       </label>
 
-      {/* Dropdown below each image */}
-      <select
-        value={selectedType}
-        onChange={onTypeChange}
-        className="mt-3 bg-gray-800 border border-gray-600 text-gray-300 text-sm rounded-md p-2 w-3/4 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
-      >
-        <option value="">Select Photo Type</option>
-        <option value="RTP (Real Time Photo)">RTP (Real Time Photo)</option>
-        <option value="KYC">KYC</option>
-        <option value="Portal Photo">Portal Photo</option>
-      </select>
     </div>
   );
 };
