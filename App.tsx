@@ -4,7 +4,7 @@ import FaceCompare from './components/FaceCompare';
 
 function App() {
   return (
-    <div className="bg-gray-900 min-h-screen text-white flex flex-col items-center p-4 sm:p-6">
+    <div className="bg-white min-h-screen text-gray-900 flex flex-col items-center p-4 sm:p-6">
       <header className="w-full max-w-4xl text-center mb-8">
         <h1 className="text-4xl sm:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
           Radiaant Face Compare
